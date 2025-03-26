@@ -3,8 +3,7 @@ module OutputWriter (
     echoRequirements
 ) where
 
-import Employee
-import EmployerRequirements
+import DataManager
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 

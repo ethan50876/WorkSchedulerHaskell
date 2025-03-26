@@ -7,8 +7,7 @@ module InputParser (
 import System.IO
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Employee
-import EmployerRequirements
+import DataManager
 
 parseEmployees :: FilePath -> IO [Employee]
 parseEmployees filePath = do
