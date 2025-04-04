@@ -27,11 +27,10 @@ scheduleShifts employeeFile requirementsFile = do
         initialState = SchedulerState schedule weeklyAssignedHours dailyShifts
 
     case solveSchedule context initialState 0 of
-        Just (SchedulerState s _ _) -> return $ Just s
-        {--Just state -> return $ Just finalSchedule
+        ---Just (SchedulerState s _ _) -> return $ Just s
+        Just state -> return $ Just finalSchedule
             where
                 (SchedulerState finalSchedule _ _) = fillMinimumHrs context state
-        --}
         Nothing -> return Nothing
 printSchedule :: ShiftSchedule -> IO ()
 printSchedule schedule = mapM_ printDay days
