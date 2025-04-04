@@ -6,6 +6,7 @@ import SchedulerContext (SchedulerContext(..))
 import SchedulerState (SchedulerState(..))
 import Employee (Employee(..))
 import SchedulerOps (updateSchedule)
+import Validators
 
 import Data.List (sortOn, delete)
 import Data.Maybe (fromMaybe)
@@ -33,11 +34,18 @@ assignExtraShifts :: Employee -> String -> [String] -> Int -> SchedulerContext -
 assignExtraShifts employee role sortedDays requiredHours context state = foldl assignDay state sortedDays
     where
         assignDay st day = foldl (assignHour day) st [fst (availability employee) .. snd (availability employee) - 1]
+        
         assignHour day st hour
-                | requiredHours <= 0 = st
-                | otherwise =
-                        let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day hour (fst (shiftLengths context)) (schedule st) (weeklyAssignedHours st) (dailyShifts st)
+            | requiredHours <= 0 = st
+            | otherwise =
+                let shiftLength = snd (shiftLengths context)  
+                    -- Validating from isValidAssignment
+                    validAssignment = isValidAssignment employee role day hour shiftLength (weeklyAssignedHours st) (dailyShifts st) (reqs context) (schedule st)
+                in if validAssignment
+                   then let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day hour shiftLength (schedule st) (weeklyAssignedHours st) (dailyShifts st)
                         in st { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }
+                   else st
+
 
 extendExistingShifts :: Employee -> String -> [String] -> Int -> SchedulerContext -> SchedulerState -> SchedulerState
 extendExistingShifts employee role sortedDays requiredHours context state =
@@ -69,4 +77,6 @@ getShift :: Map.Map String (Map.Map Int (Map.Map String [Employee])) -> Employee
 getShift schedule employee day =
     let shiftHours = [hour | (hour, roles) <- Map.toList (fromMaybe Map.empty (Map.lookup day schedule)),
                               any (elem employee) (Map.elems roles)]
-    in (head shiftHours, last shiftHours)
+    in if null shiftHours
+       then (0, 0)  -- Return a default value if no shifts are found
+       else (head shiftHours, last shiftHours)  -- Otherwise, return the first and last shift hours
