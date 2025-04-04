@@ -9,6 +9,7 @@ import ShiftSchedule (ShiftSchedule)
 import SchedulerState (SchedulerState(..))
 import SchedulerContext (SchedulerContext(..))
 import SchedulerCore (solveSchedule)
+import SchedulerMinHrs (fillMinimumHrs)
 import qualified Data.Map as Map
 
 scheduleShifts :: FilePath -> FilePath -> IO (Maybe ShiftSchedule)
@@ -26,7 +27,9 @@ scheduleShifts employeeFile requirementsFile = do
         initialState = SchedulerState schedule weeklyAssignedHours dailyShifts
 
     case solveSchedule context initialState 0 of
-        Just (SchedulerState s _ _) -> return $ Just s
+        Just state -> return $ Just finalSchedule
+            where
+                (SchedulerState finalSchedule _ _) = fillMinimumHrs context state
         Nothing -> return Nothing
 
 printSchedule :: ShiftSchedule -> IO ()
