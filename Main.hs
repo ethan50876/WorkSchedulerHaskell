@@ -33,20 +33,23 @@ scheduleShifts employeeFile requirementsFile = do
             where
                 (SchedulerState finalSchedule _ _) = fillMinimumHrs context state
         Nothing -> return Nothing
+
 printSchedule :: ShiftSchedule -> IO ()
 printSchedule schedule = mapM_ printDay days
   where
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    
+
     printDay day = case Map.lookup day schedule of
         Just hours -> do
             putStrLn $ day ++ ":"
             mapM_ printHour (Map.toList hours)
         Nothing -> putStrLn $ day ++ ": No Schedule Found"
-    
+
     printHour (hour, roles) = do
         let assigned = ["(" ++ role ++ ") " ++ name e | (role, employees) <- Map.toList roles, e <- employees]
-        putStrLn $ show hour ++ ":00 - " ++ (if null assigned then "No Assignment" else unwords assigned)
+        let assignedStr = concatMap (++ ", ") assigned
+        putStrLn $ show hour ++ ":00 - " ++ (if null assigned then "No Assignment" else init assignedStr)
+
 
 
 handleFileError :: IOException -> IO (Maybe ShiftSchedule)
