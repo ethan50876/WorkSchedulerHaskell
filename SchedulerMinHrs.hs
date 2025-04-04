@@ -52,7 +52,7 @@ extendExistingShifts employee role sortedDays requiredHours context state =
                             foldl tryExtendShift state sortedDays
                           where
                             tryExtendShift st day
-                                | requiredHours <= 0 = st
+                                | requiredHours <= 0 || getShift (schedule st) employee day == (0,0) = st
                                 | otherwise =
                                     let (start, end) = getShift (schedule st) employee day
                                         minStart = fst (availability employee)
