@@ -39,14 +39,17 @@ parseEmployerRequirements filePath = do
     content <- readFile filePath
     let rows = tail $ lines content
         parsedRows = map splitCSV rows
-        criticalMinimums = [(stripQuotes role, read minReq) | [role, minReq, _, _] <- parsedRows]
-        workHours = parseHours $ stripQuotes $ head [wh | [_, _, wh, _] <- parsedRows]
-        shiftLengths = parseHours $ stripQuotes $ head [sl | [_, _, _, sl] <- parsedRows]
-    return EmployerRequirements {
-        workHours = workHours,
-        shiftLengths = shiftLengths,
-        criticalMinimums = criticalMinimums
-    }
+    if all (\r -> length r == 4) parsedRows then
+        let criticalMinimums = [(stripQuotes role, read minReq) | [role, minReq, _, _] <- parsedRows]
+            workHours = parseHours $ stripQuotes $ head [wh | [_, _, wh, _] <- parsedRows]
+            shiftLengths = parseHours $ stripQuotes $ head [sl | [_, _, _, sl] <- parsedRows]
+        in return EmployerRequirements {
+            workHours = workHours,
+            shiftLengths = shiftLengths,
+            criticalMinimums = criticalMinimums
+        }
+    else
+        error "Invalid row format in employer requirements file."
 
 insertInOrder :: Eq k => k -> v -> [(k, v)] -> [(k, v)]
 insertInOrder key value [] = [(key, value)]
