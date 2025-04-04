@@ -17,7 +17,7 @@ scheduleShifts employeeFile requirementsFile = do
     employees <- parseEmployeeData employeeFile
     reqs <- parseEmployerRequirements requirementsFile
 
-    let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         hours = [(fst $ workHours reqs)..(snd (workHours reqs) - 1)]
         shiftRange = EmployerRequirements.shiftLengths reqs
         schedule = Map.fromList [(day, Map.fromList [(h, Map.empty) | h <- hours]) | day <- days]
@@ -27,15 +27,16 @@ scheduleShifts employeeFile requirementsFile = do
         initialState = SchedulerState schedule weeklyAssignedHours dailyShifts
 
     case solveSchedule context initialState 0 of
-        Just state -> return $ Just finalSchedule
+        Just (SchedulerState s _ _) -> return $ Just s
+        {--Just state -> return $ Just finalSchedule
             where
                 (SchedulerState finalSchedule _ _) = fillMinimumHrs context state
+        --}
         Nothing -> return Nothing
-
 printSchedule :: ShiftSchedule -> IO ()
 printSchedule schedule = mapM_ printDay days
   where
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     
     printDay day = case Map.lookup day schedule of
         Just hours -> do
