@@ -27,7 +27,6 @@ processDay :: String -> SchedulerContext -> SchedulerState -> Map.Map String [Em
 processDay day context state available index =
     case foldM (\st hr -> processHour day hr context st available index) state (hours context) of
         Just updatedState | meetsCriticalMinimumsForDay (schedule updatedState) (reqs context) day ->
-            trace ("  -> " ++ day ++ " is fully scheduled. Moving to next day.") $
             solveSchedule context updatedState (index + 1)
         _ -> Nothing
 
@@ -75,7 +74,7 @@ tryShifts employee role day hour req context state index (minLen, maxLen)
     start = hour
     shiftLen = minLen
 
--- Helper functions remain the same
+
 getAvailableEmployees :: SchedulerContext -> String -> Map.Map String [Employee]
 getAvailableEmployees context day = Map.fromList
     [ (role, filter (\e -> Set.member role (roles e) && not (Set.member day (daysOff e))) 
