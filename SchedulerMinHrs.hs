@@ -13,11 +13,12 @@ import Data.Maybe (fromMaybe)
 import Control.Monad (foldM) -- Add this import for foldM
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Control.Exception (try)
 
 fillMinimumHrs :: SchedulerContext -> SchedulerState -> SchedulerState
 fillMinimumHrs context state =
     let underMinHours = filter (\emp -> (weeklyAssignedHours state Map.! (name emp)) < (minHours emp)) (employees context)
-        dayCounts = Map.map (sum . map length . Map.elems) (schedule state)
+        dayCounts = Map.map (sum . map length . Map.elems) (schedule state) --
         role = "Floater"
     in foldl (processEmployee context dayCounts role) state underMinHours
 
@@ -26,56 +27,65 @@ processEmployee context dayCounts role state employee =
     let requiredHours = minHours employee - (weeklyAssignedHours state Map.! name employee)
         sortedDays = filter (`notElem` daysOff employee) $ sortOn (\day -> Map.findWithDefault 0 day dayCounts) (Map.keys (schedule state))
         state' = assignExtraShifts employee role sortedDays requiredHours context state
-    in if requiredHours > 0
-        then extendExistingShifts employee role sortedDays requiredHours context state'
+        requiredHours' = minHours employee - (weeklyAssignedHours state' Map.! name employee)
+        extendableDays = filter (\day -> any (employee `elem`) (concatMap Map.elems (Map.elems (fromMaybe Map.empty (Map.lookup day (schedule state)))))) (Map.keys (schedule state))
+    in if requiredHours' > 0
+        then extendExistingShifts employee role extendableDays requiredHours context state'
         else state'
 
 assignExtraShifts :: Employee -> String -> [String] -> Int -> SchedulerContext -> SchedulerState -> SchedulerState
-assignExtraShifts employee role sortedDays requiredHours context state = foldl assignDay state sortedDays
-    where
-        assignDay st day = foldl (assignHour day) st [fst (availability employee) .. snd (availability employee) - 1]
-        
-        assignHour day st hour
-            | requiredHours < 4 = st
-            | otherwise =
-                let shiftLength = fst (shiftLengths context)  
-                    -- Validating from isValidAssignment
-                    validAssignment = isValidAssignment employee role day hour shiftLength (weeklyAssignedHours st) (dailyShifts st) (reqs context) (schedule st)
-                in if validAssignment
-                   then let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day hour shiftLength (schedule st) (weeklyAssignedHours st) (dailyShifts st)
-                        in st { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }
-                   else st
+assignExtraShifts _ _ sortedDays requiredHours context state |
+    requiredHours < fst (shiftLengths context) || sortedDays == [] = state
+assignExtraShifts employee role (day:days) requiredHours context state =
+    let availableHours = [fst (availability employee) .. snd (availability employee) - 1
+                                          - fst (shiftLengths context)]
+        assignedState = tryAssignShift employee role day availableHours context state
+        requiredHours' = minHours employee - (weeklyAssignedHours assignedState Map.! name employee)
+    in assignExtraShifts employee role days requiredHours' context assignedState
 
+tryAssignShift :: Employee -> String -> String -> [Int] -> SchedulerContext -> SchedulerState -> SchedulerState
+tryAssignShift _ _ _ [] _ state = state
+tryAssignShift employee role day (hour:hours) context state =
+    if isValidAssignment employee role day hour shiftLen (weeklyAssignedHours state) (dailyShifts state) (reqs context) (schedule state)
+                       then let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day hour shiftLen (schedule state) (weeklyAssignedHours state) (dailyShifts state)
+                            in state { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }
+                       else tryAssignShift employee role day hours context state
+
+    where shiftLen = fst (shiftLengths context)
 
 extendExistingShifts :: Employee -> String -> [String] -> Int -> SchedulerContext -> SchedulerState -> SchedulerState
-extendExistingShifts employee role sortedDays requiredHours context state =
-                            foldl tryExtendShift state sortedDays
-                          where
-                            tryExtendShift st day =
-                                let (start, end) = getShift (schedule st) employee day
-                                    minStart = fst (availability employee)
-                                    maxEnd = snd (availability employee)
-                                in if requiredHours <= 0 || (start, end) == (0, 0) || (end - start) >= snd (shiftLengths context)
-                                   then st
-                                   else
-                                       let st' = extendEarlier st day start minStart requiredHours
-                                           requiredHours' = minHours employee - (weeklyAssignedHours st' Map.! name employee)
-                                           (start', end') = getShift (schedule st') employee day
-                                           in if end' - start' < snd (shiftLengths context) && requiredHours' > 0
-                                              then extendLater st' day end maxEnd requiredHours'
-                                              else st'
-                            
-                            extendEarlier st day start minStart requiredHours
-                                | start > minStart && requiredHours > 0 =
-                                    let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day (start - 1) 1 (schedule st) (weeklyAssignedHours st) (dailyShifts st)
-                                    in extendEarlier (st { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }) day (start - 1) minStart (requiredHours - 1)
-                                | otherwise = st
-                        
-                            extendLater st day end maxEnd requiredHours
-                                | end < maxEnd - 1 && requiredHours > 0 =
-                                    let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day (end + 1) 1 (schedule st) (weeklyAssignedHours st) (dailyShifts st)
-                                    in extendLater (st { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }) day (end + 1) maxEnd (requiredHours - 1)
-                                | otherwise = st
+extendExistingShifts _ _ days requiredHours _ state |
+    requiredHours <= 0 || days == [] = state
+extendExistingShifts employee role (day:days) requiredHours context state =
+    let (startHour, endHour) = getShift (schedule state) employee day
+        extendedState = extendEarlier employee day role requiredHours startHour endHour context state
+        requiredHours' = minHours employee - (weeklyAssignedHours extendedState Map.! name employee)
+        startHour' = fst (getShift (schedule extendedState) employee day)
+        extendedState' = extendLater employee day role requiredHours' startHour' endHour context extendedState
+        requiredHours'' = minHours employee - (weeklyAssignedHours extendedState' Map.! name employee)
+    in if requiredHours'' > 0
+       then extendExistingShifts employee role days requiredHours'' context extendedState'
+       else extendedState'
+
+extendEarlier :: Employee -> String -> String -> Int -> Int -> Int -> SchedulerContext -> SchedulerState -> SchedulerState
+extendEarlier employee day role requiredHours start end context state | 
+    requiredHours <= 0 || start <= fst (availability employee) || end - start >= snd(shiftLengths context) = state
+extendEarlier employee day role requiredHours start end context state =
+    let newStart = start - 1
+        extendedState = let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day (newStart) 1 (schedule state) (weeklyAssignedHours state) (dailyShifts state)
+                        in state { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }
+        requiredHours' = minHours employee - (weeklyAssignedHours extendedState Map.! name employee)
+    in extendEarlier employee day role requiredHours' newStart end context extendedState
+
+extendLater :: Employee -> String -> String -> Int -> Int -> Int -> SchedulerContext -> SchedulerState -> SchedulerState
+extendLater employee day role requiredHours start end context state | 
+    requiredHours <= 0 || end >= snd (availability employee) -1 || end - start >= snd(shiftLengths context) = state
+extendLater employee day role requiredHours start end context state =
+    let newEnd = end + 1
+        extendedState = let (newSchedule, newWeeklyHours, newDailyShifts) = updateSchedule employee role day (newEnd) 1 (schedule state) (weeklyAssignedHours state) (dailyShifts state)
+                        in state { schedule = newSchedule, weeklyAssignedHours = newWeeklyHours, dailyShifts = newDailyShifts }
+        requiredHours' = minHours employee - (weeklyAssignedHours extendedState Map.! name employee)
+    in extendLater employee day role requiredHours' start newEnd context extendedState
 
 getShift :: Map.Map String (Map.Map Int (Map.Map String [Employee])) -> Employee -> String -> (Int, Int)
 getShift schedule employee day =

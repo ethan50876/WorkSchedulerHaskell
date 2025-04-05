@@ -18,7 +18,7 @@ isValidAssignment employee role day startHour shiftLength weeklyAssignedHours da
         exceedsHours = currentHours + shiftLength > maxHours employee
         onDayOff = Set.member day (daysOff employee) 
         outsideAvailability = startHour < fst (availability employee) || startHour + shiftLength > snd (availability employee)
-        roleMismatch = not (Set.member role (roles employee)) 
+        roleMismatch = not ( (Set.member role (roles employee))  || (role == "Floater") )
         hasWorked = hasWorkedToday employee day schedule
     in not (exceedsHours || onDayOff || outsideAvailability || roleMismatch || hasWorked)
 
