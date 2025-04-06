@@ -1,4 +1,17 @@
--- DataManager.hs
+-- | DataManager.hs
+-- 
+-- This module provides functions for parsing employee and employer requirements data from CSV files.
+-- It includes functions to parse employee information, including their roles, availability, minimum and
+-- maximum working hours, and days off. Additionally, it provides a function to parse employer requirements
+-- that specify the work hours, shift lengths, and critical role requirements.
+-- 
+-- The module exposes the following functions:
+-- 
+-- * 'parseEmployeeData': Parses a CSV file to retrieve employee data.
+-- * 'parseEmployerRequirements': Parses a CSV file to retrieve employer requirements.
+-- * 'insertInOrder': Inserts a key-value pair into a list of key-value pairs in order.
+-- * 'parseHours': Parses a string representing hours (ex."9-18") into a tuple of integers.
+-- * Utility functions for parsing and manipulating CSV data (ex. splitting by comma).
 module DataManager (
     parseEmployeeData,
     parseEmployerRequirements
@@ -10,13 +23,34 @@ import qualified Data.Map as Map
 import Employee
 import EmployerRequirements
 
--- Parses Employee Data
+-- Parses the employee data from a .csv file.
+--
+-- This function reads a .csv file containing employee information and returns a list of 'Employee' objects.
+-- The file is expected to have rows representing each employee's details, including their name, availability,
+-- minimum and maximum working hours, roles, and days off.
+--
+-- Arguments:
+--   filePath: The path to the employee data .csv file.
+--
+-- Returns:
+--   A list of 'Employee' objects parsed from the .csv file.
 parseEmployeeData :: FilePath -> IO [Employee]
 parseEmployeeData filePath = do
     content <- readFile filePath
     let rows = tail $ lines content
     return $ map parseEmployee rows
 
+
+-- Parses a single row of employee data.
+--
+-- This function converts a row of employee data into an instance of the 'Employee' object. It expects a .csv where the 
+-- row contains the following columns: name, availability, minimum hours, maximum hours, roles, and days off.
+--
+-- Arguments:
+--   row: A string representing a single row of employee data in .csv format.
+--
+-- Returns:
+--   An 'Employee' object parsed from the row data.
 parseEmployee :: String -> Employee
 parseEmployee row =
     case splitCSV row of
@@ -33,7 +67,17 @@ parseEmployee row =
             }
         _ -> error $ "Invalid employee row: " ++ row
 
--- Parses Employer Requirements Data
+
+-- Parses the employer requirements data from a .csv file.
+--
+-- This function reads a C,csv file containing employer requirements for scheduling and returns an 'EmployerRequirements'
+-- object that specifies the work hours, shift lengths, and critical minimum requirements for various roles.
+--
+-- Arguments:
+--   filePath: The path to the employer requirements .csv file.
+--
+-- Returns:
+--   An 'EmployerRequirements' object parsed from the .csv file.
 parseEmployerRequirements :: FilePath -> IO EmployerRequirements
 parseEmployerRequirements filePath = do
     content <- readFile filePath
@@ -51,18 +95,43 @@ parseEmployerRequirements filePath = do
     else
         error "Invalid row format in employer requirements file."
 
+
+-- Inserts a key-value pair into a list of key-value pairs in order.
+--
+-- This function ensures that the list of key-value pairs is ordered by the keys, and it inserts the new key-value
+-- pair in its correct position while maintaining the order.
+--
+-- Arguments:
+--   key: The key to insert.
+--   value: The value associated with the key.
+--   list: The list of existing key-value pairs.
+--
+-- Returns:
+--   The updated list of key-value pairs with the new pair inserted in order.
 insertInOrder :: Eq k => k -> v -> [(k, v)] -> [(k, v)]
 insertInOrder key value [] = [(key, value)]
 insertInOrder key value ((k, v) : xs)
     | key == k  = (key, value) : xs
     | otherwise = (k, v) : insertInOrder key value xs
 
--- Parses Hours from string like "9-18"
+
+-- Parses a string representing hours into a tuple of integers.
+--
+-- This function expects a string in the format "start-end", where start and end are integers representing the start
+-- and end times. It converts this string into a tuple of integers (start, end).
+--
+-- Arguments:
+--   s: A string representing the hours in the format "start-end".
+--
+-- Returns:
+--   A tuple of integers representing the start and end times.
 parseHours :: String -> (Int, Int)
 parseHours s = 
     case map read (splitDash s) of
         [start, end] -> (start, end)
         _ -> error $ "Invalid hour format: " ++ s
+
+
 
 -- Utility Functions
 splitCSV :: String -> [String]
