@@ -11,11 +11,6 @@
 -- The module exposes the following functions:
 --
 -- * 'solveSchedule': The main function that recursively attempts to create a valid schedule.
--- * 'processDay': Processes one day of scheduling, handling each hour and role.
--- * 'processHour': Processes each hour for a given day and role, assigning employees to meet requirements.
--- * 'processRole': Attempts to assign employees to a specific role at a specific time.
--- * 'tryEmployees': Recursively tries to assign employees to roles until a valid schedule is found or all options are exhausted.
--- * 'tryShifts': Attempts to assign shifts to an employee and checks if the assignment is valid.
 
 module SchedulerCore (
     solveSchedule
