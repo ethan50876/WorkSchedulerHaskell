@@ -1,0 +1,5 @@
+Roles,Critical Minimums,Scheduling Hours,ShiftLengths
+Supervisor,1,9-18,4-8
+Cashier,1,9-18,4-8, hi, he
+On-Floor,1,9-18,4-8
+Floater,0,9-18,4-8

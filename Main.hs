@@ -89,7 +89,8 @@ scheduleShifts employeeFile requirementsFile = do
 -- Returns:
 --   An `IO` action that prints the schedule to the console.
 printSchedule :: ShiftSchedule -> IO ()
-printSchedule schedule = mapM_ printDay days
+printSchedule schedule = do putStrLn $ "\nGenerated Schedule:\n"
+                            mapM_ printDay days
   where
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
@@ -121,8 +122,8 @@ handleFileError _ = do
 --   An `IO` action that runs the entire program, calling scheduling and printing functions.
 main :: IO ()
 main = do
-    let employeeFile = "data/employees.csv"
-        requirementsFile = "data/requirements.csv"
+    let employeeFile = "data/validEmps1.csv"
+        requirementsFile = "data/validReqs1.csv"
     schedule <- catch (scheduleShifts employeeFile requirementsFile)
                       handleFileError
     case schedule of

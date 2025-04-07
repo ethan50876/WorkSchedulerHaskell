@@ -45,7 +45,8 @@ updateSchedule employee role day startHour shiftLength schedule weeklyAssignedHo
     let updatedSchedule = foldl (addShift employee role day) schedule [startHour..(startHour + shiftLength - 1)]
         updatedHours = Map.insertWith (+) (name employee) shiftLength weeklyAssignedHours
         updatedShifts = Map.insertWith (++) (name employee) [day] dailyShifts
-    in trace ("Updated schedule with " ++ name employee ++ " for role " ++ role ++ " on " ++ day) (updatedSchedule, updatedHours, updatedShifts)
+    in --trace ("Updated schedule with " ++ name employee ++ " for role " ++ role ++ " on " ++ day)
+        (updatedSchedule, updatedHours, updatedShifts)
 
 
 -- Adds a shift for an employee at a specific hour.
@@ -64,7 +65,7 @@ updateSchedule employee role day startHour shiftLength schedule weeklyAssignedHo
 --   The updated shift schedule after adding the employee.
 addShift :: Employee -> String -> String -> ShiftSchedule -> Int -> ShiftSchedule
 addShift employee role day schedule hour =
-    trace ("Assigning " ++ name employee ++ " to role: " ++ role ++ " at hour: " ++ show hour ++ " on " ++ day) $
+    --trace ("Assigning " ++ name employee ++ " to role: " ++ role ++ " at hour: " ++ show hour ++ " on " ++ day) $
     let daySchedule = Map.findWithDefault Map.empty day schedule
         hourSchedule = Map.findWithDefault Map.empty hour daySchedule
         roleSchedule = Map.findWithDefault [] role hourSchedule
@@ -95,7 +96,8 @@ removeAssignment employee role day startHour shiftLength schedule weeklyAssigned
     let updatedSchedule = foldl (removeShift employee role day) schedule [startHour..(startHour + shiftLength - 1)]
         updatedHours = Map.update (Just . subtract shiftLength) (name employee) weeklyAssignedHours
         updatedShifts = Map.adjust (filter (/= day)) (name employee) dailyShifts
-    in trace ("Removing " ++ name employee ++ " from role " ++ role ++ " on " ++ day) (updatedSchedule, updatedHours, updatedShifts)
+    in --trace ("Removing " ++ name employee ++ " from role " ++ role ++ " on " ++ day)
+        (updatedSchedule, updatedHours, updatedShifts)
 
 
 -- Removes a shift for an employee at a specific hour.
@@ -114,7 +116,7 @@ removeAssignment employee role day startHour shiftLength schedule weeklyAssigned
 --   The updated shift schedule after removing the employee's assignment.
 removeShift :: Employee -> String -> String -> ShiftSchedule -> Int -> ShiftSchedule
 removeShift employee role day schedule hour =
-    trace ("Removing assignment of " ++ name employee ++ " from role: " ++ role ++ " at hour: " ++ show hour ++ " on " ++ day) $
+    --trace ("Removing assignment of " ++ name employee ++ " from role: " ++ role ++ " at hour: " ++ show hour ++ " on " ++ day) $
     let daySchedule = Map.findWithDefault Map.empty day schedule
         hourSchedule = Map.findWithDefault Map.empty hour daySchedule
         roleSchedule = Map.findWithDefault [] role hourSchedule

@@ -28,6 +28,7 @@ import Control.Monad (foldM) -- Add this import for foldM
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Exception (try)
+import Debug.Trace (trace)
 
 {-|
     The 'fillMinimumHrs' function ensures that employees in the scheduling system
@@ -50,7 +51,10 @@ fillMinimumHrs context state =
     let underMinHours = filter (\emp -> (weeklyAssignedHours state Map.! (name emp)) < (minHours emp)) (employees context)
         dayCounts = Map.map (sum . map length . Map.elems) (schedule state) --
         role = "Floater"
-    in foldl (processEmployee context dayCounts role) state underMinHours
+        finalState = foldl (processEmployee context dayCounts role) state underMinHours
+    in if any (\emp -> (minHours emp - (weeklyAssignedHours finalState Map.! name emp)) > 0) underMinHours
+       then trace "Unable to fill minimum hours for all employees" finalState
+       else trace "All employee minimum hours met" finalState
 
 
 {-|
@@ -80,9 +84,12 @@ processEmployee context dayCounts role state employee =
         requiredHours' = minHours employee - (weeklyAssignedHours state' Map.! name employee)
         extendableDays = filter (\day -> any (employee `elem`) (concatMap Map.elems (Map.elems (fromMaybe Map.empty (Map.lookup day (schedule state)))))) (Map.keys (schedule state))
     in if requiredHours' > 0
-        then extendExistingShifts employee role extendableDays requiredHours context state'
+        then 
+            let state'' = extendExistingShifts employee role extendableDays requiredHours context state'
+            in if minHours employee - (weeklyAssignedHours state'' Map.! name employee) > 0
+                then trace ("  -> " ++ name employee ++ " could not meet minimum hours.") state''
+                else state''
         else state'
-
 
 {-|
     The 'assignExtraShifts' function is responsible for assigning additional shifts

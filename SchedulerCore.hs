@@ -47,7 +47,7 @@ solveSchedule context state index
     | otherwise =
         let day = days context !! index
             available = getAvailableEmployees context day
-        in trace ("\n--- Processing " ++ day ++ " ---") $
+        in --trace ("\n--- Processing " ++ day ++ " ---") $
            processDay day context state available index
 
 
